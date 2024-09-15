@@ -1,4 +1,5 @@
 const vscode = require('vscode');
+const path = require('path');
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -138,7 +139,7 @@ class CodeCollectorPanel {
           console.log('Copy to Clipboard button clicked.');
           const prompt = document.getElementById('prompt').value;
           const code = document.getElementById('codeDisplay').value;
-          vscode.postMessage({ command: 'copyToClipboard', text: prompt + '\\n' + code });
+          vscode.postMessage({ command: 'copyToClipboard', text: code + '\\n\\n\\n\\n' + prompt });
         });
 
         window.addEventListener('message', event => {
@@ -159,6 +160,15 @@ class CodeCollectorPanel {
   async collectOpenTabContent() {
     let content = '';
 
+    // Get the root path of the workspace
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const rootPath = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : '';
+
+    if (!rootPath) {
+      console.log('No workspace folder found.');
+      return '';
+    }
+
     // Get the active tab group
     const activeTabGroup = vscode.window.tabGroups.activeTabGroup;
 
@@ -177,10 +187,11 @@ class CodeCollectorPanel {
         try {
           // Open the text document using the URI
           const document = await vscode.workspace.openTextDocument(tab.input.uri);
-          const fileName = document.fileName;
-          console.log('Collecting content from tab:', fileName);
+          const absolutePath = document.fileName;
+          const relativePath = path.relative(rootPath, absolutePath);
+          console.log('Collecting content from tab:', relativePath);
           const fileContent = document.getText();
-          content += `// File: ${fileName}\n${fileContent}\n\n`;
+          content += `// File: ${relativePath}\n${fileContent}\n\n`;
         } catch (error) {
           console.error('Error opening document:', error);
         }
