@@ -2,7 +2,7 @@
   "name": "code-collector-js",
   "displayName": "code-collector-js",
   "description": "Collects and displays content from all open tabs.",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "engines": {
     "vscode": "^1.93.0"
   },
