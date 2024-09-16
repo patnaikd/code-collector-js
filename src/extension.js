@@ -1,8 +1,6 @@
 const vscode = require('vscode');
 const path = require('path');
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-
 /**
  * Called when the extension is activated.
  * This method is called when the extension is activated, which happens when the command defined below is invoked.
@@ -10,7 +8,6 @@ const isDevelopment = process.env.NODE_ENV === 'development';
  */
 function activate(context) {
   console.log('Extension "code-collector-js" is now active!');
-  console.log('Is Development Environment', isDevelopment);
 
   // Register the 'code-collector-js.openPanel' command
   let disposable = vscode.commands.registerCommand('code-collector-js.openPanel', function () {
@@ -65,8 +62,8 @@ class CodeCollectorPanel {
         switch (message.command) {
           case 'collectCode':
             // Collect code from open tabs and send it back to the webview
-            const code = await this.collectOpenTabContent();
-            this._panel.webview.postMessage({ command: 'displayCode', code: code });
+            const content = await this.collectOpenTabContent();
+            this._panel.webview.postMessage({ command: 'displayCode', content: content });
             return;
           case 'copyToClipboard':
             // Copy provided text to the clipboard
@@ -158,14 +155,17 @@ class CodeCollectorPanel {
    * @private
    */
   _getHtmlForWebview(webview) {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    console.log('Is Development Environment', isDevelopment);
+
     const nonce = getNonce();
 
     // Decide where to load the script from based on development or production mode
     const scriptUri = isDevelopment
       ? 'http://localhost:3000/bundle.js' // URL served by webpack-dev-server during development
       : webview.asWebviewUri(
-          vscode.Uri.joinPath(this._extensionUri, 'out', 'bundle.js')
-        );
+        vscode.Uri.joinPath(this._extensionUri, 'out', 'bundle.js')
+      );
 
     const cspSource = webview.cspSource;
 
@@ -193,12 +193,16 @@ class CodeCollectorPanel {
     </html>`;
   }
 
+  // In src/extension.js
+
   /**
    * Collects the content of all open tabs in the current tab group.
-   * @returns {Promise<string>} The concatenated content of all open tabs.
+   * @returns {Promise<{ code: string, stats: { numberOfFiles: number, numberOfWords: number, collectedAt: string } }>} The concatenated content of all open tabs and the statistics.
    */
   async collectOpenTabContent() {
     let content = '';
+    let numberOfFiles = 0;
+    let numberOfWords = 0;
 
     // Get the root path of the workspace
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -206,7 +210,7 @@ class CodeCollectorPanel {
 
     if (!rootPath) {
       console.log('No workspace folder found.');
-      return '';
+      return { code: '', stats: null };
     }
 
     // Get the active tab group
@@ -215,7 +219,7 @@ class CodeCollectorPanel {
     // Check if there is an active tab group
     if (!activeTabGroup) {
       console.log('No active tab group found.');
-      return '';
+      return { code: '', stats: null };
     }
 
     console.log('Number of tabs in the current tab group:', activeTabGroup.tabs.length);
@@ -231,6 +235,10 @@ class CodeCollectorPanel {
           const relativePath = path.relative(rootPath, absolutePath);
           console.log('Collecting content from tab:', relativePath);
           const fileContent = document.getText();
+
+          numberOfFiles += 1;
+          numberOfWords += fileContent.split(/\s+/).filter(word => word.length > 0).length;
+
           content += `// File: ${relativePath}\n${fileContent}\n\n`;
         } catch (error) {
           console.error('Error opening document:', error);
@@ -238,7 +246,16 @@ class CodeCollectorPanel {
       }
     }
 
-    return content;
+    // Get the current date and time in ISO format
+    const collectedAt = new Date().toISOString();
+
+    const stats = {
+      numberOfFiles,
+      numberOfWords,
+      collectedAt
+    };
+
+    return { code: content, stats: stats };
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Button,
   TextField,
@@ -19,6 +19,7 @@ const App = ({ vscode }) => {
   const [codeContent, setCodeContent] = useState('');
   const [promptText, setPromptText] = useState('');
   const [themeMode, setThemeMode] = useState('light'); // 'light' or 'dark'
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     // This effect sets up the message listener to receive messages from the extension's main script.
@@ -28,7 +29,8 @@ const App = ({ vscode }) => {
       const message = event.data;
       switch (message.command) {
         case 'displayCode':
-          setCodeContent(message.code);
+          setCodeContent(message.content.code);
+          setStats(message.content.stats);
           break;
         case 'setTheme':
           setThemeMode(message.theme === 'vscode-dark' ? 'dark' : 'light');
@@ -72,11 +74,27 @@ const App = ({ vscode }) => {
     },
   });
 
+  // Format the collectedAt timestamp
+  const formattedDate = useMemo(() => {
+    if (!stats || !stats.collectedAt) return '-';
+    const date = new Date(stats.collectedAt);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }, [stats]);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ p: 2 }}>
-        <Typography variant="h4" gutterBottom>Code Collector</Typography>
+        <Typography variant="h4" gutterBottom>
+          Code Collector
+        </Typography>
         <TextField
           label="Enter your prompts here..."
           variant="outlined"
@@ -114,6 +132,15 @@ const App = ({ vscode }) => {
           >
             Copy to Clipboard
           </Button>
+          <Typography variant="body2" sx={{ fontSize: 12 }}>
+            Number of files: {stats ? stats.numberOfFiles : '-'}
+          </Typography>
+          <Typography variant="body2" sx={{ fontSize: 12 }}>
+            Number of words: {stats ? stats.numberOfWords : '-'}
+          </Typography>
+          <Typography variant="body2" sx={{ fontSize: 12 }}>
+            Collected at: {formattedDate}
+          </Typography>
         </Box>
         <TextField
           label="Collected Code"
@@ -126,7 +153,7 @@ const App = ({ vscode }) => {
             readOnly: true,
             sx: {
               fontFamily: 'monospace', // Use monospace font for code
-              whiteSpace: 'pre',        // Preserve whitespace and line breaks
+              whiteSpace: 'pre', // Preserve whitespace and line breaks
               fontSize: 10,
             },
           }}
@@ -134,7 +161,7 @@ const App = ({ vscode }) => {
             '& .MuiInputBase-input': {
               fontSize: 12,
               fontFamily: 'monospace', // Use monospace font for code
-              whiteSpace: 'pre',        // Preserve whitespace and line breaks
+              whiteSpace: 'pre', // Preserve whitespace and line breaks
             },
             '& .MuiInputLabel-root': {
               fontSize: 12,
