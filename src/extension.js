@@ -1,35 +1,50 @@
 const vscode = require('vscode');
 const path = require('path');
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 /**
- * @param {vscode.ExtensionContext} context
+ * Called when the extension is activated.
+ * This method is called when the extension is activated, which happens when the command defined below is invoked.
+ * @param {vscode.ExtensionContext} context - The extension context provided by VSCode.
  */
 function activate(context) {
   console.log('Extension "code-collector-js" is now active!');
-  console.log('Is Development Environment', isDevelopment)
+  console.log('Is Development Environment', isDevelopment);
 
+  // Register the 'code-collector-js.openPanel' command
   let disposable = vscode.commands.registerCommand('code-collector-js.openPanel', function () {
+    // When the command is executed, create or show the Code Collector panel
     CodeCollectorPanel.createOrShow(context.extensionUri);
   });
 
+  // Add to subscriptions to ensure the command is disposed when the extension is deactivated
   context.subscriptions.push(disposable);
 }
 exports.activate = activate;
 
+/**
+ * Called when the extension is deactivated.
+ * This method is called when your extension is deactivated.
+ */
 function deactivate() { }
 exports.deactivate = deactivate;
 
+/**
+ * Class representing the Code Collector Panel.
+ * This class encapsulates the functionality for the webview panel used in the extension.
+ */
 class CodeCollectorPanel {
   /**
+   * The currently active panel. Only allow a single panel at a time.
    * @type {CodeCollectorPanel}
    */
   static currentPanel = undefined;
 
   /**
-   * @param {vscode.WebviewPanel} panel
-   * @param {vscode.Uri} extensionUri
+   * Creates an instance of CodeCollectorPanel.
+   * @param {vscode.WebviewPanel} panel - The webview panel where the webview is displayed.
+   * @param {vscode.Uri} extensionUri - The URI of the directory containing the extension.
    */
   constructor(panel, extensionUri) {
     this._panel = panel;
@@ -49,14 +64,17 @@ class CodeCollectorPanel {
 
         switch (message.command) {
           case 'collectCode':
+            // Collect code from open tabs and send it back to the webview
             const code = await this.collectOpenTabContent();
             this._panel.webview.postMessage({ command: 'displayCode', code: code });
             return;
           case 'copyToClipboard':
+            // Copy provided text to the clipboard
             await vscode.env.clipboard.writeText(message.text);
-            vscode.window.showInformationMessage(`Copied ${message.text.length} to clipboard!`);
+            vscode.window.showInformationMessage(`Copied ${message.text.length} characters to clipboard!`);
             return;
           case 'getTheme':
+            // Send the current theme to the webview
             const themeKind = vscode.window.activeColorTheme.kind;
             const theme = themeKind === vscode.ColorThemeKind.Dark ? 'vscode-dark' : 'vscode-light';
             this._panel.webview.postMessage({ command: 'setTheme', theme });
@@ -67,7 +85,7 @@ class CodeCollectorPanel {
       this._disposables
     );
 
-    // In the constructor of CodeCollectorPanel
+    // Listen for theme changes and update the webview accordingly
     vscode.window.onDidChangeActiveColorTheme(
       (event) => {
         const theme = event.kind === vscode.ColorThemeKind.Dark ? 'vscode-dark' : 'vscode-light';
@@ -79,7 +97,8 @@ class CodeCollectorPanel {
   }
 
   /**
-   * @param {vscode.Uri} extensionUri
+   * Creates a new panel or reveals the existing one.
+   * @param {vscode.Uri} extensionUri - The URI of the directory containing the extension.
    */
   static createOrShow(extensionUri) {
     const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
@@ -104,12 +123,16 @@ class CodeCollectorPanel {
     CodeCollectorPanel.currentPanel = new CodeCollectorPanel(panel, extensionUri);
   }
 
+  /**
+   * Cleans up and disposes of the webview panel and its resources.
+   */
   dispose() {
     CodeCollectorPanel.currentPanel = undefined;
 
-    // Clean up our resources
+    // Dispose of the webview panel
     this._panel.dispose();
 
+    // Dispose of all disposables (e.g., event listeners)
     while (this._disposables.length) {
       const x = this._disposables.pop();
       if (x) {
@@ -118,23 +141,31 @@ class CodeCollectorPanel {
     }
   }
 
+  /**
+   * Updates the webview's HTML content.
+   * This method sets the webview's HTML content by invoking _getHtmlForWebview.
+   * @private
+   */
   _update() {
     const webview = this._panel.webview;
     this._panel.webview.html = this._getHtmlForWebview(webview);
   }
 
   /**
-   * @param {vscode.Webview} webview
+   * Generates the HTML content for the webview.
+   * @param {vscode.Webview} webview - The webview instance.
+   * @returns {string} The HTML content to display in the webview.
+   * @private
    */
   _getHtmlForWebview(webview) {
     const nonce = getNonce();
 
-    // Decide where to load the script from
+    // Decide where to load the script from based on development or production mode
     const scriptUri = isDevelopment
-      ? 'http://localhost:3000/bundle.js' // URL served by webpack-dev-server
+      ? 'http://localhost:3000/bundle.js' // URL served by webpack-dev-server during development
       : webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'out', 'bundle.js')
-      );
+          vscode.Uri.joinPath(this._extensionUri, 'out', 'bundle.js')
+        );
 
     const cspSource = webview.cspSource;
 
@@ -142,6 +173,7 @@ class CodeCollectorPanel {
     const themeKind = vscode.window.activeColorTheme.kind;
     const theme = themeKind === vscode.ColorThemeKind.Dark ? 'vscode-dark' : 'vscode-light';
 
+    // Return the HTML content with appropriate CSP and script inclusion
     return `<!DOCTYPE html>
     <html lang="en" class="${theme}">
     <head>
@@ -161,6 +193,10 @@ class CodeCollectorPanel {
     </html>`;
   }
 
+  /**
+   * Collects the content of all open tabs in the current tab group.
+   * @returns {Promise<string>} The concatenated content of all open tabs.
+   */
   async collectOpenTabContent() {
     let content = '';
 
@@ -206,6 +242,10 @@ class CodeCollectorPanel {
   }
 }
 
+/**
+ * Generates a nonce for Content Security Policy.
+ * @returns {string} A random nonce string.
+ */
 function getNonce() {
   let text = '';
   const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

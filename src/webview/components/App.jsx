@@ -9,13 +9,21 @@ import {
   Typography,
 } from '@mui/material';
 
+/**
+ * The main application component for the Code Collector extension.
+ * This component renders the UI for collecting code and managing prompts.
+ * @param {Object} props - The component props.
+ * @param {any} props.vscode - The VSCode API object obtained via acquireVsCodeApi().
+ */
 const App = ({ vscode }) => {
   const [codeContent, setCodeContent] = useState('');
   const [promptText, setPromptText] = useState('');
   const [themeMode, setThemeMode] = useState('light'); // 'light' or 'dark'
 
   useEffect(() => {
-    // Listen for messages from VSCode
+    // This effect sets up the message listener to receive messages from the extension's main script.
+    // It handles 'displayCode' to update the code content, and 'setTheme' to update the theme mode.
+    // Also, it requests the current theme from VSCode when the component mounts.
     const handleMessage = (event) => {
       const message = event.data;
       switch (message.command) {
@@ -40,10 +48,16 @@ const App = ({ vscode }) => {
     };
   }, [vscode]);
 
+  /**
+   * Sends a message to VSCode to collect the code from open tabs.
+   */
   const collectCode = () => {
     vscode.postMessage({ command: 'collectCode' });
   };
 
+  /**
+   * Sends a message to VSCode to copy the combined code content and prompt text to the clipboard.
+   */
   const copyToClipboard = () => {
     vscode.postMessage({
       command: 'copyToClipboard',
@@ -51,6 +65,7 @@ const App = ({ vscode }) => {
     });
   };
 
+  // Create a Material-UI theme based on the current theme mode ('light' or 'dark')
   const theme = createTheme({
     palette: {
       mode: themeMode,
