@@ -8,6 +8,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
  */
 function activate(context) {
   console.log('Extension "code-collector-js" is now active!');
+  console.log('Is Development Environment', isDevelopment)
 
   let disposable = vscode.commands.registerCommand('code-collector-js.openPanel', function () {
     CodeCollectorPanel.createOrShow(context.extensionUri);
