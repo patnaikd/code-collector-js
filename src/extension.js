@@ -96,6 +96,7 @@ class CodeCollectorPanel {
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
+        retainContextWhenHidden: true,
       }
     );
 
