@@ -1,6 +1,8 @@
 const vscode = require('vscode');
 const path = require('path');
 
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 /**
  * @param {vscode.ExtensionContext} context
  */
@@ -108,55 +110,35 @@ class CodeCollectorPanel {
    * @param {vscode.Webview} webview
    */
   _getHtmlForWebview(webview) {
-    // Use a nonce to whitelist which scripts can be run
     const nonce = getNonce();
+
+    // Decide where to load the script from
+    const scriptUri = isDevelopment
+      ? 'http://localhost:3000/bundle.js' // URL served by webpack-dev-server
+      : webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, 'out', 'bundle.js')
+      );
+
+    const cspSource = webview.cspSource;
 
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
+      <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'nonce-${nonce}' ${isDevelopment ? "'unsafe-eval' http://localhost:3000" : cspSource
+      }; style-src ${cspSource} 'unsafe-inline';"
+      >
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Code Collector</title>
     </head>
     <body>
-      <textarea id="prompt" placeholder="Enter your prompt here..." style="width:100%;height:50px;"></textarea>
-      <div>
-        <button id="collectCode">Collect Code</button>
-        <button id="copyToClipboard">Copy to Clipboard</button>
-      </div>
-      <textarea id="codeDisplay" readonly style="width:100%;height:calc(100% - 100px);"></textarea>
-
-      <script nonce="${nonce}">
-        const vscode = acquireVsCodeApi();
-
-        document.getElementById('collectCode').addEventListener('click', () => {
-		      console.log('Collect Code button clicked.');
-          vscode.postMessage({ command: 'collectCode' });
-        });
-
-        document.getElementById('copyToClipboard').addEventListener('click', () => {
-          console.log('Copy to Clipboard button clicked.');
-          const prompt = document.getElementById('prompt').value;
-          const code = document.getElementById('codeDisplay').value;
-          vscode.postMessage({ command: 'copyToClipboard', text: code + '\\n\\n\\n\\n' + prompt });
-        });
-
-        window.addEventListener('message', event => {
-          const message = event.data;
-          console.log('Received message from extension:', message);
-
-          switch (message.command) {
-            case 'displayCode':
-              document.getElementById('codeDisplay').value = message.code;
-              break;
-          }
-        });
-      </script>
+      <div id="root"></div>
+      <script nonce="${nonce}" src="${scriptUri}"></script>
     </body>
     </html>`;
   }
-
   async collectOpenTabContent() {
     let content = '';
 
