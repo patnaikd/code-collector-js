@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Button, TextField, Box, ThemeProvider, createTheme } from '@mui/material';
-import { CssBaseline } from '@mui/material';
+import {
+  Button,
+  TextField,
+  Box,
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+  Typography,
+} from '@mui/material';
 
 const App = ({ vscode }) => {
   const [codeContent, setCodeContent] = useState('');
@@ -54,21 +61,42 @@ const App = ({ vscode }) => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ p: 2 }}>
+        <Typography variant="h4" gutterBottom>Code Collector</Typography>
         <TextField
           label="Enter your prompts here..."
           variant="outlined"
           fullWidth
           multiline
-          minRows={2}
+          minRows={4}
           value={promptText}
           onChange={(e) => setPromptText(e.target.value)}
-          sx={{ mb: 2 }}
+          sx={{
+            mb: 2,
+            '& .MuiInputBase-input': {
+              fontSize: 12, // Reduce the input text font size
+            },
+            '& .MuiInputLabel-root': {
+              fontSize: 12, // Reduce the label font size
+            },
+          }}
         />
         <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <Button variant="contained" onClick={collectCode}>
+          <Button
+            variant="contained"
+            onClick={collectCode}
+            sx={{
+              fontSize: 12, // Reduce the button text font size
+            }}
+          >
             Collect Code
           </Button>
-          <Button variant="outlined" onClick={copyToClipboard}>
+          <Button
+            variant="outlined"
+            onClick={copyToClipboard}
+            sx={{
+              fontSize: 12, // Reduce the button text font size
+            }}
+          >
             Copy to Clipboard
           </Button>
         </Box>
@@ -81,6 +109,21 @@ const App = ({ vscode }) => {
           value={codeContent}
           InputProps={{
             readOnly: true,
+            sx: {
+              fontFamily: 'monospace', // Use monospace font for code
+              whiteSpace: 'pre',        // Preserve whitespace and line breaks
+              fontSize: 10,
+            },
+          }}
+          sx={{
+            '& .MuiInputBase-input': {
+              fontSize: 12,
+              fontFamily: 'monospace', // Use monospace font for code
+              whiteSpace: 'pre',        // Preserve whitespace and line breaks
+            },
+            '& .MuiInputLabel-root': {
+              fontSize: 12,
+            },
           }}
         />
       </Box>
