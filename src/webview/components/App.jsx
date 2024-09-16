@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, TextField, Box, ThemeProvider, createTheme } from '@mui/material';
+import { CssBaseline } from '@mui/material';
 
 const App = ({ vscode }) => {
   const [codeContent, setCodeContent] = useState('');
@@ -37,27 +38,53 @@ const App = ({ vscode }) => {
   };
 
   const copyToClipboard = () => {
-    vscode.postMessage({ command: 'copyToClipboard', text: `${codeContent}\n\n\n\n${promptText}` });
+    vscode.postMessage({
+      command: 'copyToClipboard',
+      text: `${codeContent}\n\n\n\n${promptText}`,
+    });
   };
 
+  const theme = createTheme({
+    palette: {
+      mode: themeMode,
+    },
+  });
+
   return (
-    <div>
-      <textarea
-        placeholder="Enter your prompts here..."
-        value={promptText}
-        onChange={(e) => setPromptText(e.target.value)}
-        style={{ width: '100%', height: '50px' }}
-      />
-      <div>
-        <button onClick={collectCode}>Collect Code</button>
-        <button onClick={copyToClipboard}>Copy to Clipboard</button>
-      </div>
-      <textarea
-        readOnly
-        value={codeContent}
-        style={{ width: '100%', height: 'calc(100% - 100px)' }}
-      />
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ p: 2 }}>
+        <TextField
+          label="Enter your prompts here..."
+          variant="outlined"
+          fullWidth
+          multiline
+          minRows={2}
+          value={promptText}
+          onChange={(e) => setPromptText(e.target.value)}
+          sx={{ mb: 2 }}
+        />
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <Button variant="contained" onClick={collectCode}>
+            Collect Code
+          </Button>
+          <Button variant="outlined" onClick={copyToClipboard}>
+            Copy to Clipboard
+          </Button>
+        </Box>
+        <TextField
+          label="Collected Code"
+          variant="outlined"
+          fullWidth
+          multiline
+          minRows={10}
+          value={codeContent}
+          InputProps={{
+            readOnly: true,
+          }}
+        />
+      </Box>
+    </ThemeProvider>
   );
 };
 

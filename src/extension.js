@@ -53,9 +53,24 @@ class CodeCollectorPanel {
             return;
           case 'copyToClipboard':
             await vscode.env.clipboard.writeText(message.text);
-            vscode.window.showInformationMessage('Content copied to clipboard!');
+            vscode.window.showInformationMessage(`Copied ${message.text.length} to clipboard!`);
+            return;
+          case 'getTheme':
+            const themeKind = vscode.window.activeColorTheme.kind;
+            const theme = themeKind === vscode.ColorThemeKind.Dark ? 'vscode-dark' : 'vscode-light';
+            this._panel.webview.postMessage({ command: 'setTheme', theme });
             return;
         }
+      },
+      null,
+      this._disposables
+    );
+
+    // In the constructor of CodeCollectorPanel
+    vscode.window.onDidChangeActiveColorTheme(
+      (event) => {
+        const theme = event.kind === vscode.ColorThemeKind.Dark ? 'vscode-dark' : 'vscode-light';
+        this._panel.webview.postMessage({ command: 'setTheme', theme });
       },
       null,
       this._disposables
@@ -121,8 +136,12 @@ class CodeCollectorPanel {
 
     const cspSource = webview.cspSource;
 
+    // Get the current theme kind
+    const themeKind = vscode.window.activeColorTheme.kind;
+    const theme = themeKind === vscode.ColorThemeKind.Dark ? 'vscode-dark' : 'vscode-light';
+
     return `<!DOCTYPE html>
-    <html lang="en">
+    <html lang="en" class="${theme}">
     <head>
       <meta charset="UTF-8">
       <meta
@@ -139,6 +158,7 @@ class CodeCollectorPanel {
     </body>
     </html>`;
   }
+
   async collectOpenTabContent() {
     let content = '';
 
